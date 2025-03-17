@@ -8,7 +8,7 @@ global started := 0
 global oldBiomes := []
 global sortedFiles := []
 global logPath := "C:\Users\" A_UserName "\AppData\Local\Roblox\logs"
-global iniPath := A_ScriptDir "\config.ini"
+global iniPath := A_ScriptDir "\lib\config.ini"
 global biomes:={"WINDY":0x9ae5ff,"RAINY":0x027cbd,"SNOWY":0xDceff9,"SANDSTORM":0x8F7057,"HELL":0xff4719,"STARFALL":0x011ab7,"CORRUPTION":0x6d32a8,"NULL":0x838383,"GLITCHED":0xbfff00,"DREAMSPACE":0xea9dda}
 getUsername(logFile) {
     FileRead, file, % logFile
@@ -16,26 +16,13 @@ getUsername(logFile) {
     file := SubStr(file, 1, InStr(file, ".")-1)
     return file
 }
+updateChecker() {
+    Run, % A_ScriptDir "\lib\updatechecker.ahk"
+}
+updateChecker()
 updateLogs() {
     sorter := new FileSorter()
     sortedFiles := sorter.SortFiles(logPath)  ; Now returns the sorted array
-}
-removeClick(ctrlID) {
-    distance:=25
-    len := StrSplit(read("Clicks"), "|")
-    num := SubStr(ctrlID, 12)
-    len.RemoveAt(num)
-    newSettings:=""
-    for i,v in len {
-        newSettings .= v
-        if (i!=len.Length()) {
-            newSettings .= "|"
-        }
-    }
-    IniWrite, % newSettings, % iniPath, Main, Clicks
-    WinGetPos, x, y,,,Click Manager
-    Gui, click:Destroy
-    Ui.click(x,y)
 }
 getPSLinkfromUser(user) {
     arr := StrSplit(read("accounts"), "||||")
@@ -56,6 +43,73 @@ getLogFilefromUser(user) {
         }
     }
 }
+importSettings() {
+    MsgBox % "To import settings from an old macro installation, select the file named ""config.ini"" in the lib folder"
+    FileSelectFile, fir, 3, %A_ScriptDir%, Select Configuration File, All Files (*.*)
+    if (fir) {
+        FileRead, ini, %fir%
+        if (ErrorLevel) {
+            MsgBox, 48,, There was a problem importing settings.`nPlease try again.
+            return 0
+        }
+        FileDelete, % iniPath
+        FileAppend, % ini, % iniPath
+        Reload
+    }
+}
+exportSettings() {
+    MsgBox % "If you select an already existing file, it will be overridden. To create a new file, right click and New > Text Document`n(the file type doesn't matter)"
+    FileSelectFile, exportPath, 48, %A_ScriptDir%, Select Export File
+    if (exportPath) {
+        FileRead, curIni, % iniPath
+        FileDelete, % exportPath
+        FileAppend, % curIni, % exportPath
+        MsgBox, % "Settings exported succesfully!"
+    }
+    /*
+    FileSelectDir, exportDir
+    InputBox, exportName, % "Name of exported file`n(do NOT include the .ini at the end)"
+    fullPath := exportDir . exportName . ".ini"
+    if (FileExist(fullPath)) {
+        msgbox, 52, 
+    }
+    */
+}
+runClicks() { ; adapted from @yefw's program
+    if (read("ADEnable")) {
+        WinGet, id, List
+        windowHandles:=[]
+        windowCoords:=[]
+        Loop, %id% { ; updates roblox windows idk man
+            this_id := id%A_Index%
+            WinGetTitle, title, ahk_id %this_id%
+            if (title = "Roblox") {
+                if (!read("ADBM")) {
+                    WinMaximize, ahk_id %this_id%
+                }
+                WinGetPos, winX, winY, winWidth, winHeight, ahk_id %this_id%
+                windowHandles.Push(this_id)
+                windowCoords.Push({x: winX, y: winY, w: winWidth, h: winHeight})
+            }
+        }
+        for i,handle in windowHandles {
+            if (!read("ADBM")) {
+                WinActivate, ahk_id %handle%
+            }
+            Sleep, 300
+            pos := windowCoords[i]
+            x := pos.x + (pos.w/2)
+            y := pos.y + (pos.h/2)
+            Sleep, 100
+            ;if (read("ADBM")) {
+            ;    ControlClick, x%x% y%y%, ahk_id %handle%,,,, NA
+            ;}
+            MouseMove, % x+1, % y
+            click, %x% %y%
+            Sleep, 100
+        }
+    }
+}
 class detect {
     getRPCMsg(filePath) {
         FileRead, file, % filePath
@@ -66,7 +120,7 @@ class detect {
     getBiome(msg) {
         str = ","
         biome := SubStr(msg, InStr(msg, "largeImage")+26)
-        return SubStr(biome, 1,InStr(biome,str)-1)
+        return StrReplace(SubStr(biome, 1,InStr(biome,str)-1),A_Space)
     }
 }
 sendBiomeMsg(biome,start,account) {
@@ -119,21 +173,6 @@ read(option) {
     IniRead, out, % iniPath, Main, % option
     return out
 }
-clickSave() {
-    GuiControlGet, val,, clickEnable
-    IniWrite, % val, % iniPath, Main, ClickEnabled
-    len := StrSplit(read("Clicks"), "|").Length()
-    str := ""
-    Loop, % len {
-        GuiControlGet, v1,, x%A_Index%
-        GuiControlGet, v2,, y%A_Index%
-        str := str . v1 . ":" . v2
-        if (A_Index!=len) {
-            str := str . "|"
-        }
-    }
-    IniWrite, % str, % iniPath, Main, Clicks
-}
 accountRemove(ctrlID) {
     accountSave()
     num := substr(ctrlId, 14)
@@ -175,7 +214,7 @@ biomeSave() {
         IniWrite, % temp, % iniPath, Main, % v
     }
 }
-global settings:=["URL","UserID"]
+global settings:=["URL","UserID","ADEnable","ADBM"]
 mainLoad() {
     for i,v in settings {
         GuiControl,, % v, % read(v)
@@ -198,25 +237,6 @@ mainSave() {
         GuiControlGet, val,, %v%
         IniWrite, % val, % iniPath, Main, % v
     }
-}
-addClick() {
-    global
-    distance:=25
-    offset:=68
-    val := read("Clicks")
-    new := val?val . "|0:0":"0:0"
-    IniWrite, % new, % iniPath, Main, Clicks
-    i := StrSplit(read("Clicks"), "|").Length()
-    y:=(i*distance)+offset
-    bY:=y-2
-    Gui click:Add, Edit, y%y% x15 h20 w55 vx%i% Number
-    Gui click:Add, UpDown, Range0-10000 0x80 vx1%i%
-    Gui click:Add, Edit, y%y% x85 h20 w55 vy%i% Number
-    Gui click:Add, UpDown, Range0-10000 0x80 vy1%i%
-    GuiControl,, click:x%i%, 0
-    GuiControl,, click:y%i%, 0
-    Gui click:Add, Button, y%by% h24 w60 x148 vClickRemove%i% gClickRemove, % "Remove"
-    Gui, click:Show, AutoSize
 }
 addAccount() {
     accountSave()
@@ -392,43 +412,20 @@ class UI {
         Gui Add, Text, x8 y45, % "User ID"
         Gui Add, Edit, y60 h20 x12 w140 vUserID gsaveMain
         Gui Add, Button, x8 y85 w144 h25 gAccountUI, % "Account Settings"
-        Gui Add, Button, x155 y8 h60 w65 gBiomeUI, % "Biome Settings"
-        Gui Add, Button, x155 y75 h60 w65 gClickUI, % "Click Settings"
+        Gui Add, Button, x155 y8 h60 w55 gBiomeUI, % "Biome Settings"
+        ;Gui Add, Button, x155 y75 h60 w55, % "Import Settings"
+        Gui, Add, Button, y8 gportUI h60 w75 x215, % "Import/Export Settings"
+        Gui Add, GroupBox, y70 x155 w135 h65, % "Anti-Disconnection"
+            Gui, Add, Checkbox, y85 x162 vADEnable gsaveMain, % "Enable"
+            Gui, Add, Checkbox, y100 x162 vADBM gsaveMain, % "Background Mode"
+            GuiControl, Disable, ADBM
+            Gui, Add, Button, x268 w20 y112 h20 gADHelp, % "?"
         Gui Add, Button, x8 y113 h22 w70 gStart, % "F1 - Start"
         Gui Add, Button, x82 y113 h22 w70 gStop, % "F2 - Stop"
         Gui Font, s6
         Gui Add, Text, x11 y138, % "made by @b0red_man"
         Gui, Show
         mainLoad()
-    }
-    click(wx, wy) {
-        global
-        distance:=25
-        offset:=88
-        Gui, click:New
-        Gui Add, Text, x8 y8, % "This is so your accounts don't disconnect."
-        Gui Add, Button, x8 y23 h25 w100 gaddClick, % "Add Click"
-        Gui Add, Button, x112 y23 h25 w100 gHighlightClicks, % "Highlight Clicks"
-        Gui Add, Button, x8 y50 h23 w100 gClickGetPos, % "Get Mouse Pos"
-        Gui Add, Button, x112 y50 h23 w100 gClickSave, % "Save Entries"
-        Gui Add, Text, x40 y95, % "X"
-        Gui Add, Text, x108 y95, % "Y"
-        Gui Add, Checkbox, x11 y80 vClickEnable, % "Enable Clicks"
-        GuiControl,, clickEnable, % read("ClickEnabled")
-        arr := StrSplit(read("Clicks"), "|")
-        for i,v in arr {
-            y:=(i*distance)+offset
-            bY:=y-2
-            pos:=StrSplit(v, ":")
-            Gui Add, Edit, y%y% x15 h20 w55 vx%i% Number
-            Gui Add, UpDown, Range0-10000 0x80 vxU%i%
-            Gui Add, Edit, y%y% x85 h20 w55 vy%i% Number
-            Gui Add, UpDown, Range0-10000 0x80 vyU%i%
-            GuiControl,, x%i%, % pos[1]
-            GuiControl,, y%i%, % pos[2]
-            Gui Add, Button, y%by% h24 w60 x148 vClickRemove%i% gClickRemove, % "Remove"
-        }
-        Gui, Show, x%wx% y%wy%, Click Manager
     }
     biome() {
         global
@@ -473,28 +470,11 @@ class UI {
         }
         Gui, Show, x%ux% y%uy%, % "Account Settings"
     }
-}
-highlightClicks() {
-    clickSave()
-    arr := StrSplit(read("Clicks"), "|")
-    for i,v in arr {
-        pos:=StrSplit(v, ":")
-        ToolTip, % i, % pos[1], % pos[2], % i
-        SetTimer, RemoveToolTip, -7500
-    }
-}
-runClicks() {
-    if (read("ClickEnabled")) {
-        arr := StrSplit(read("Clicks"), "|")
-        for i,v in arr {
-            subArr := StrSplit(v, ":")
-            sleep, 100
-            MouseMove, % subArr[1], % subArr[2]
-            Sleep, 100
-            Loop, 3 {
-                Click
-            }
-        }
+    port() {
+        Gui, port:New
+        Gui Add, Button,x8 y8 h22 w60 gImport, % "Import"
+        Gui Add, Button,x8 y30 h22 w60 gExport, % "Export"
+        Gui Show
     }
 }
 class FileSorter {
@@ -547,7 +527,7 @@ start() {
         webhookPost({embedTitle:"Macro Started", embedFooter:t, embedColor:0x273586})
         SetTimer, biomeTick, 500
         SetTimer, updateLogs, 60000
-        SetTimer, runClicks, 3000
+        SetTimer, runClicks, 300000
     }
     started:=1
 }
@@ -563,32 +543,17 @@ stop() {
 }
 UI.main()
 Return
-ClickUI:
-    ui.click(A_ScreenWidth/2, A_ScreenHeight/2)
-Return
 BiomeUI:
     ui.biome()
+Return
+portUI:
+    ui.port()
 Return
 accountUI:
     ui.account(A_ScreenWidth/2, A_ScreenHeight/2)
 Return
-highlightClicks:
-    highlightClicks()
-Return
-RemoveToolTip:
-    Loop 20 {
-        ToolTip, , , , % A_Index
-    }
-return
-AddClick:
-    addClick()
-Return
 AccountAdd:
     addAccount()
-Return
-clickGuiClose:
-    clickSave()
-    Gui, click:Destroy
 Return
 biomeGuiClose:
     biomeSave()
@@ -605,8 +570,16 @@ Return
 saveMain:
     mainSave()
 Return
-clickSave:
-    clickSave()
+import:
+    Gui port:Destroy
+    importSettings()
+Return
+export:
+    Gui port:Destroy
+    exportSettings()
+Return
+runClicks:
+    runClicks()
 Return
 biomeSave:
     biomeSave()
@@ -614,26 +587,17 @@ Return
 accountSave:
     accountSave()
 Return
-ClickRemove:
-    removeClick(A_GuiControl)
-Return
 AccountRemove:
     accountRemove(A_GuiControl)
 Return
-ClickGetPos:
-    MsgBox % "After Clicking 'OK', right click where you want to get the position"
-    KeyWait, RButton, D
-    MouseGetPos, x, y
-    MsgBox % "X: " x ", Y: " y
+ADHelp:
+    MsgBox % "This feature will switch to each of your Roblox windows and click on them every 5 minutes.`nThis prevents them from disconnecting.`nBackground mode disabled because it's broken, trying to find a fix`n`nadapted from @yefw's ""Adjust Windows"" program"
 Return
 biomeTick:
     biomeTick()
 Return
 updateLogs:
     updateLogs()
-Return
-runClicks:
-    runClicks()
 Return
 start:
     start()
