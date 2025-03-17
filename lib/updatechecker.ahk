@@ -2,6 +2,7 @@
 #SingleInstance, force
 SetWorkingDir %A_ScriptDir%
 global mainPath := StrReplace(A_ScriptFullPath, "\lib\updatechecker.ahk", "\main.ahk")
+global versionPath := A_ScriptDir "\version.txt"
 downloadMain() {
     UrlDownloadToFile, https://raw.githubusercontent.com/b0red-man/multiacc/refs/heads/main/main.ahk, % mainPath
     if (ErrorLevel) {
@@ -20,6 +21,8 @@ main() {
         MsgBox, 68,, % "An update is avaliable, would you like the macro to automatically install it? `nAll your settings will be saved."
         IfMsgBox, Yes
             downloadMain()
+            FileDelete, % versionPath
+            FileAppend, % newVer, % versionPath
         IfMsgBox, No
             ExitApp
     }
