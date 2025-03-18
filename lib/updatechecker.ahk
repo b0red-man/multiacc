@@ -9,8 +9,10 @@ downloadMain() {
         MsgBox, 48,, % "There was a problem updating the macro.`nPlease check your internet connection and try again."
         ExitApp
     }
+    FileDelete, % versionPath
+    FileAppend, % newVer, % versionPath
     Run, % mainPath
-    MsgBox % "Macro Updated Succesfully!"
+    ; MsgBox % "Macro Updated Succesfully!"
 }
 main() {
     FileRead, curVer, %A_ScriptDir%\version.txt
@@ -21,8 +23,6 @@ main() {
         MsgBox, 68,, % "An update is avaliable, would you like the macro to automatically install it? `nAll your settings will be saved."
         IfMsgBox, Yes
             downloadMain()
-            FileDelete, % versionPath
-            FileAppend, % newVer, % versionPath
         IfMsgBox, No
             ExitApp
     }
