@@ -349,7 +349,7 @@ Class CreateFormData {
             :  "application/octet-stream"
     }
 }
-webhookPost(data := 0){
+webhookPost(data := 0){ ; from dolphsol
     data := data ? data : {}
 
     url := read("URL")
@@ -391,17 +391,18 @@ webhookPost(data := 0){
         objParam["file" i] := [v]
     }
 
-    CreateFormData(postdata,hdr_ContentType,objParam)
-
-    WebRequest := ComObjCreate("WinHttp.WinHttpRequest.5.1")
-    WebRequest.Open("POST", url, true)
-    WebRequest.SetRequestHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko")
-    WebRequest.SetRequestHeader("Content-Type", hdr_ContentType)
-    WebRequest.SetRequestHeader("Pragma", "no-cache")
-    WebRequest.SetRequestHeader("Cache-Control", "no-cache, no-store")
-    WebRequest.SetRequestHeader("If-Modified-Since", "Sat, 1 Jan 2000 00:00:00 GMT")
-    WebRequest.Send(postdata)
-    WebRequest.WaitForResponse()
+    try {
+        CreateFormData(postdata,hdr_ContentType,objParam)
+        WebRequest := ComObjCreate("WinHttp.WinHttpRequest.5.1")
+        WebRequest.Open("POST", url, true)
+        WebRequest.SetRequestHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko")
+        WebRequest.SetRequestHeader("Content-Type", hdr_ContentType)
+        WebRequest.SetRequestHeader("Pragma", "no-cache")
+        WebRequest.SetRequestHeader("Cache-Control", "no-cache, no-store")
+        WebRequest.SetRequestHeader("If-Modified-Since", "Sat, 1 Jan 2000 00:00:00 GMT")
+        WebRequest.Send(postdata)
+        WebRequest.WaitForResponse()
+    }
 }
 class UI {
     main() {
