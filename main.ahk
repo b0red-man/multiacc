@@ -24,7 +24,6 @@ updateChecker() {
     Run, % A_ScriptDir "\lib\updatechecker.ahk"
 }
 updateChecker()
-updateChecker()
 updateLogs() {
     sorter := new FileSorter()
     sortedFiles := sorter.SortFiles(logPath)  ; Now returns the sorted array
