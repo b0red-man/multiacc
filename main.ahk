@@ -17,8 +17,13 @@ getUsername(logFile) {
     return file
 }
 updateChecker() {
+    try {
+        file := A_ScriptDir "\lib\updatechecker.ahk" ; yes, this is updating the updater
+        UrlDownloadToFile, https://raw.githubusercontent.com/b0red-man/multiacc/refs/heads/main/lib/updatechecker.ahk, % file
+    }
     Run, % A_ScriptDir "\lib\updatechecker.ahk"
 }
+updateChecker()
 updateChecker()
 updateLogs() {
     sorter := new FileSorter()
@@ -113,7 +118,7 @@ runClicks() { ; adapted from @yefw's program
 class detect {
     getRPCMsg(filePath) {
         FileRead, file, % filePath
-        msg :=  SubStr(file, InStr(file, "[BloxstrapRPC]",, 0))
+        msg :=  SubStr(file, InStr(file, "[BloxstrapRPC]",1000, 0))
         msg := SubStr(msg, 1, InStr(msg, "}}}",, 0)+2)
         return msg
     }
