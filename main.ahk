@@ -447,7 +447,7 @@ class UI {
     main() {
         global
         Gui, main:New
-        Gui Add, Text, x8 y8, % "Webhook URL"
+        Gui Add, Text, x8 y8, % "Default Webhook URL"
         Gui Add, Edit, y22 h20 x12 w140 vURL gsaveMain
         Gui Add, Text, x8 y45, % "User ID"
         Gui Add, Edit, y60 h20 x12 w140 vUserID gsaveMain
