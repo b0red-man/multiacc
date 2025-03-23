@@ -114,7 +114,7 @@ runClicks() { ; adapted from @yefw's program
             if (!read("ADBM")) {
                 WinActivate, ahk_id %handle%
             }
-            Sleep, 300f
+            Sleep, 300
             pos := windowCoords[i]
             x := pos.x + (pos.w/2)
             y := pos.y + (pos.h/2)
