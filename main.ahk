@@ -28,6 +28,20 @@ updateLogs() {
     sorter := new FileSorter()
     sortedFiles := sorter.SortFiles(logPath)  ; Now returns the sorted array
 }
+getWebhookfromUser(user) {
+    arr := StrSplit(read("accounts"), "||||")
+    for _,v in arr {
+        sub := StrSplit(v, ":::")
+        if (sub[1] = user) {
+            if (sub[3]) {
+                return sub[3]
+            } else {
+                return read("URL")
+            }
+        }
+    }
+    return 0
+}
 getPSLinkfromUser(user) {
     arr := StrSplit(read("accounts"), "||||")
     for _,v in arr {
@@ -100,7 +114,7 @@ runClicks() { ; adapted from @yefw's program
             if (!read("ADBM")) {
                 WinActivate, ahk_id %handle%
             }
-            Sleep, 300
+            Sleep, 300f
             pos := windowCoords[i]
             x := pos.x + (pos.w/2)
             y := pos.y + (pos.h/2)
@@ -135,6 +149,7 @@ sendBiomeMsg(biome,start,account) {
     FormatTime, t,, HH:mm:ss
     footer := t . ", Account: " . account
     color := biomes[biome]
+    url := getWebhookfromUser(account)
     if (ddV != "None") {
         if (start) {
             title := "Biome Started | " . biome
@@ -146,11 +161,11 @@ sendBiomeMsg(biome,start,account) {
                 }
                 con .= " <@" . id . ">"
             }
-            webhookPost({content: con, embedTitle: title, embedColor: color, embedFooter: footer})
+            webhookPost({content: con, embedTitle: title, embedColor: color, embedFooter: footer},url)
         } else {
             if (biome) {
                 title := "Biome Ended | " . biome
-                webhookPost({embedTitle: title, embedColor: color, embedFooter: footer})
+                webhookPost({embedTitle: title, embedColor: color, embedFooter: footer},url)
             }
         }
     }
@@ -178,6 +193,35 @@ read(option) {
     IniRead, out, % iniPath, Main, % option
     return out
 }
+uniqueArray(arr) {
+    unique := []
+    seen := {}
+    for k, v in arr {
+        if (!seen.HasKey(v)) {
+            unique.Push(v)
+            seen[v] := true
+        }
+    }
+    return unique
+}
+sendAll(data := 0) {
+    arr := StrSplit(read("accounts"), "||||")
+    webhookArr := []
+    for i,v in arr {
+        sub := strsplit(arr[A_Index],":::")
+        webhookArr[i] := sub[3]
+    }
+    webhookArr := uniqueArray(webhookArr)
+    for i,v in webhookArr {
+        url := ""
+        if (v) {
+            url := v
+        } else {
+            url := read("URL")
+        }
+        webhookPost(data,url)
+    }
+}
 accountRemove(ctrlID) {
     accountSave()
     num := substr(ctrlId, 14)
@@ -201,7 +245,8 @@ accountSave() {
     Loop, % i {
         GuiControlGet, acc,, % "Account" . A_Index
         GuiControlGet, link,, % "PSLink" . A_Index
-        str .= acc . ":::" . link
+        GuiControlGet, url,, % "Webhook" . A_Index
+        str .= acc . ":::" . link . ":::" . url
         if (A_Index!=i) {
             str .= "||||"
         }
@@ -354,22 +399,16 @@ Class CreateFormData {
             :  "application/octet-stream"
     }
 }
-webhookPost(data := 0){ ; from dolphsol
+webhookPost(data := 0, url := 0){ ; from dolphsol
     data := data ? data : {}
-
-    url := read("URL")
     discordID := read("UserID")
-
     if (!url){
         return 0
     }
-
     if (data.pings){
         data.content := data.content ? data.content " <@" discordID ">" : "<@" discordID ">"
     }
-
     data.embedColor := data.embedColor + 0
-
     payload_json := "
 		(LTrim Join
 		{
@@ -385,17 +424,12 @@ webhookPost(data := 0){ ; from dolphsol
 			}]
 		}
 		)"
-
     if ((!data.embedContent && !data.embedTitle) || data.noEmbed)
         payload_json := RegExReplace(payload_json, ",.*""embeds.*}]", "")
-    
-
     objParam := {payload_json: payload_json}
-
     for i,v in (data.files ? data.files : []) {
         objParam["file" i] := [v]
     }
-
     try {
         CreateFormData(postdata,hdr_ContentType,objParam)
         WebRequest := ComObjCreate("WinHttp.WinHttpRequest.5.1")
@@ -462,16 +496,19 @@ class UI {
         Gui, account:new
         Gui Add, button, x8 y8 h24 w100 gAccountAdd, % "Add Account"
         Gui Add, button, x112 y8 h24 w100 gAccountSave, % "Save"
+        Gui Add, button, y8 x216 w105 h24 gReadMe, % "> READ ME <"
         Gui Add, Text, x30 y35, % "Username"
-        Gui Add, Text, x170 y35, % "PS Link"
+        Gui Add, Text, x165 y35, % "PS Link"
+        Gui Add, Text, y35 x275, % "Alternate Webhook URL"
         arr := StrSplit(read("Accounts"), "||||")
         for i,v in arr {
             if (v) {
                 y := (i*distance)+offset
                 sub := StrSplit(v, ":::")
                 Gui Add, Edit, x15 h20 w80 y%y% vAccount%i%, % sub[1]
-                Gui Add, Edit, x110 h20 w160 y%y% vPSLink%i%, % sub[2]
-                Gui Add, Button, h20 y%y% w70 x275 vAccountRemove%i% gAccountRemove, % "Remove"
+                Gui Add, Edit, x100 h20 w160 y%y% vPSLink%i%, % sub[2]
+                Gui Add, Edit, x265 h20 w135 y%y% vWebhook%i%, % sub[3]
+                Gui Add, Button, h20 y%y% w70 x405 vAccountRemove%i% gAccountRemove, % "Remove"
             }
         }
         Gui, Show, x%ux% y%uy%, % "Account Settings"
@@ -530,7 +567,7 @@ start() {
     if (!started) {
         updateLogs()
         FormatTime, t,, HH:mm:ss
-        webhookPost({embedTitle:"Macro Started", embedFooter:t, embedColor:0x273586})
+        sendAll({embedTitle:"Macro Started", embedFooter:t, embedColor:0x273586})
         SetTimer, biomeTick, 500
         SetTimer, updateLogs, 60000
         SetTimer, runClicks, 300000
@@ -540,7 +577,7 @@ start() {
 stop() {
     if(started) {
         FormatTime, t,, HH:mm:ss
-        webhookPost({embedTitle:"Macro Stopped", embedFooter:t, embedColor:0x273586})
+        sendAll({embedTitle:"Macro Stopped", embedFooter:t, embedColor:0x273586})
         SetTimer, biomeTick, Off
         SetTimer, updateLogs, Off
         SetTimer, runClicks, Off
@@ -598,6 +635,9 @@ AccountRemove:
 Return
 ADHelp:
     MsgBox % "This feature will switch to each of your Roblox windows and click on them every 5 minutes.`nThis prevents them from disconnecting.`nBackground mode disabled because it's broken, trying to find a fix`n`nadapted from @yefw's ""Adjust Windows"" program"
+Return
+ReadMe:
+    MsgBox % "Account - The username of the account, must be exact & not a display name`n`nPS Link - The private server link of the account, doesnt matter if it's sharelink or not, just used to send in the webhook messages`n`nAlternate Webhook - Will send all biome messages to said webhook, if left blank, default webhook url will be used"
 Return
 biomeTick:
     biomeTick()
