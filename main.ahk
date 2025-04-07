@@ -1,10 +1,13 @@
-﻿#NoEnv
+#NoEnv
 SendMode Input
 CoordMode, ToolTip, Screen
 CoordMode, Mouse, Screen
 SetWorkingDir %A_ScriptDir%
 #SingleInstance, force
+#MaxMem, 1024
 global started := 0
+global threadsRunning := 0
+global threadPath := A_ScriptDir "\lib\thread.ahk"
 global oldBiomes := []
 global sortedFiles := []
 global logPath := "C:\Users\" A_UserName "\AppData\Local\Roblox\logs"
@@ -264,7 +267,7 @@ biomeSave() {
         IniWrite, % temp, % iniPath, Main, % v
     }
 }
-global settings:=["URL","UserID","ADEnable","ADBM"]
+global settings:=["URL","UserID","ADEnable","ADBM","MThread"]
 mainLoad() {
     for i,v in settings {
         GuiControl,, % v, % read(v)
@@ -285,7 +288,7 @@ mainSave() {
     global
     for i,v in settings {
         GuiControlGet, val,, %v%
-        IniWrite, % val, % iniPath, Main, % v
+        IniWrite, % val, % iniPath, Main, %v%
     }
 }
 addAccount() {
@@ -448,7 +451,7 @@ class UI {
         global
         Gui, main:New
         Gui Add, Text, x8 y8, % "Default Webhook URL"
-        Gui Add, Edit, y22 h20 x12 w140 vURL gsaveMain
+        Gui Add, Edit, y22 h20 x12 w140 vURL gsavemain
         Gui Add, Text, x8 y45, % "User ID"
         Gui Add, Edit, y60 h20 x12 w140 vUserID gsaveMain
         Gui Add, Button, x8 y85 w144 h25 gAccountUI, % "Account Settings"
@@ -456,14 +459,16 @@ class UI {
         ;Gui Add, Button, x155 y75 h60 w55, % "Import Settings"
         Gui, Add, Button, y8 gportUI h60 w75 x215, % "Import/Export Settings"
         Gui Add, GroupBox, y70 x155 w135 h65, % "Anti-Disconnection"
-            Gui, Add, Checkbox, y85 x162 vADEnable gsaveMain, % "Enable"
-            Gui, Add, Checkbox, y100 x162 vADBM gsaveMain, % "Background Mode"
+            Gui, Add, Checkbox, y85 x162 vADEnable, % "Enable"
+            Gui, Add, Checkbox, y100 x162 vADBM, % "Background Mode"
             GuiControl, Disable, ADBM
             Gui, Add, Button, x268 w20 y112 h20 gADHelp, % "?"
         Gui Add, Button, x8 y113 h22 w70 gStart, % "F1 - Start"
         Gui Add, Button, x82 y113 h22 w70 gStop, % "F2 - Stop"
+        Gui Add, GroupBox, x8 w290 h35 y140, % "Misc"
+        Gui Add, Checkbox, x16 y155 vMThread, % "Multithreading"
         Gui Font, s6
-        Gui Add, Text, x11 y138, % "made by @b0red_man"
+        Gui Add, Text, x210 y160, % "made by @b0red_man"
         Gui, Show
         mainLoad()
     }
@@ -564,12 +569,21 @@ class FileSorter {
     }
 }
 start() {
+    mainSave()
     if (!started) {
-        updateLogs()
-        FormatTime, t,, HH:mm:ss
+        formatTime, t,, HH:mm:ss
         sendAll({embedTitle:"Macro Started", embedFooter:t, embedColor:0x273586})
-        SetTimer, biomeTick, 500
-        SetTimer, updateLogs, 60000
+        if (read("MThread")&&!threadsrunning) {
+            for _,v in StrSplit(read("accounts"), "||||") {
+                ; account := StrSplit(v, ":::")[1]
+                Run, %threadPath% %v%
+            }
+            threadsrunning := 1
+        } else {
+            updateLogs()
+            SetTimer, biomeTick, 500
+            SetTimer, updateLogs, 180000
+        }
         SetTimer, runClicks, 300000
     }
     started:=1
@@ -581,6 +595,15 @@ stop() {
         SetTimer, biomeTick, Off
         SetTimer, updateLogs, Off
         SetTimer, runClicks, Off
+        if (read("MThread") && threadsRunning) {
+            for _,v in StrSplit(read("accounts"), "||||") {
+                account := StrSplit(v, ":::")[1]
+                title := "thread0xF" . account
+                WinGet, p, PID , % title
+                Process, Close, % p
+            }
+            threadsRunning := 0
+        }
     }
     started:=0
 }
