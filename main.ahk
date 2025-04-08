@@ -134,7 +134,7 @@ runClicks() { ; adapted from @yefw's program
 class detect {
     getRPCMsg(filePath) {
         FileRead, file, % filePath
-        VarSetCapacity(msg, 2147483648) ; gives msg max 2gb ram (doesnt actually use 2gb)
+        ;VarSetCapacity(msg, 2147483648) ; gives msg max 2gb ram (doesnt actually use 2gb)
         msg :=  SubStr(file, InStr(file, "[BloxstrapRPC]",1000, 0))
         msg := SubStr(msg, 1, InStr(msg, "}}}",, 0)+2)
         return msg
