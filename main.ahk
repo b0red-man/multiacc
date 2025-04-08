@@ -630,6 +630,7 @@ accountGUiClose:
     Gui, account:destroy
 Return
 mainGuiClose:
+	stop()
     mainSave()
     ExitApp
 Return
