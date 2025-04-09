@@ -19,13 +19,14 @@ downloadFiles(newVer) {
 main() {
     FileRead, curVer, %A_ScriptDir%\version.txt
     UrlDownloadToFile, https://raw.githubusercontent.com/b0red-man/multiacc/refs/heads/main/lib/version.txt, %A_Temp%\newver.txt
-    FileRead, fullver, %A_Temp%\newver.txt
+    FileRead, gitVer, %A_Temp%\newver.txt
     FileDelete, %A_Temp%\newver.txt
-    versions := StrSplit(fullver, ":")
-    newVer := versions[1]
-    threadVer := versions[2]
-    if (newVer > curVer || threadVer > curVer) {
-        MsgBox, 68,, % "An update is avaliable, would you like the macro to automatically install it? `nAll your settings will be saved."
+    installVer := StrSplit(curVer, ":") ; [1] = main.ahk, [2] = thread.ahk
+    gitVers := StrSplit(gitVer, ":") ; [3] = update message (changelog)
+    updMsg := gitVers[3]
+    ; msgbox % "github ver: " gitVer "`ninstalled ver:" curVer "`nmsg: " updMsg
+    if (installVer[1] < gitVers[1] || installVer[2] < gitVers[2]) {
+        MsgBox, 68,, % "An update is avaliable, would you like the macro to automatically install it? `nAll your settings will be saved.`nChanges: " updMsg
         IfMsgBox, Yes
             downloadFiles(fullver)
         IfMsgBox, No
