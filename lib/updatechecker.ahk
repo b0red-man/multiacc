@@ -28,7 +28,7 @@ main() {
     if (installVer[1] < gitVers[1] || installVer[2] < gitVers[2]) {
         MsgBox, 68,, % "An update is avaliable, would you like the macro to automatically install it? `nAll your settings will be saved.`nChanges: " updMsg
         IfMsgBox, Yes
-            downloadFiles(fullver)
+            downloadFiles(gitVer)
         IfMsgBox, No
             ExitApp
     }
