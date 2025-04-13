@@ -2,6 +2,7 @@
 #NoEnv
 #MaxMem, 1024 ; this is a bit dangerous, fuck it
 #SingleInstance, off
+SetBatchLines, 1
 global sortedFiles := []
 global iniPath := A_ScriptDir "\config.ini"
 global oldbiome = ""
@@ -287,7 +288,7 @@ read(option) {
 }
 win()
 updateLogs()
-SetTimer, biomeTick, 250
+SetTimer, biomeTick, 2500
 SetTimer, updateLogs, 180000
 Return
 updateLogs:
