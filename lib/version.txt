@@ -1,1 +1,1 @@
-6:1:added multithreading
+6:2:made multithreading use less cpu
