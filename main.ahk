@@ -5,6 +5,33 @@ CoordMode, Mouse, Screen
 SetWorkingDir %A_ScriptDir%
 #SingleInstance, force
 #MaxMem, 1024
+
+; --- Discontinuation Logic ---
+MsgBox, 64, MultiAcc Discontinued, MultiAcc is discontinued. The core functionality (Start/Stop) has been disabled. You can still access settings to export them if needed.
+
+; --- New Prompt: Download MultiScope? ---
+MsgBox, 36, MultiScope Setup, Download MultiScope?`n(MultiAcc will close after download if you choose Yes)
+IfMsgBox Yes
+{
+    ; --- Download/Run MultiScope Updater ---
+    MsgBox, 64, Downloading..., Starting MultiScope download/installation...
+    Run, % A_ScriptDir "\\lib\\updatechecker.ahk",,, UpdatePID ; Run the downloader script and get its PID
+    if (!ErrorLevel) { ; Check if Run command itself succeeded
+        Process, WaitClose, %UpdatePID%, 60 ; Wait up to 60 seconds for the updater process to finish
+        if (ErrorLevel) {
+            MsgBox, 48, Timeout/Error, Timed out waiting for the MultiScope updater/installer to close, or it may have encountered an error.
+        } else {
+            MsgBox, 64, Download Complete?, MultiScope download/installation process finished.
+        }
+    } else {
+        MsgBox, 48, Error, Failed to launch the MultiScope downloader (`updatechecker.ahk`). Cannot proceed.
+    }
+    ExitApp ; Exit MultiAcc after attempting download
+}
+; If 'No', the script continues to run with disabled Start/Stop
+
+; --- Original Code (functions are defined but not run automatically) ---
+
 global started := 0
 global threadsRunning := 0
 global threadPath := A_ScriptDir "\lib\thread.ahk"
@@ -22,11 +49,10 @@ getUsername(logFile) {
 updateChecker() {
     try {
         file := A_ScriptDir "\lib\updatechecker.ahk" ; yes, this is updating the updater
-        UrlDownloadToFile, https://raw.githubusercontent.com/b0red-man/multiacc/refs/heads/main/lib/updatechecker.ahk, % file
+        ; UrlDownloadToFile, https://raw.githubusercontent.com/b0red-man/multiacc/refs/heads/main/lib/updatechecker.ahk, % file
     }
     Run, % A_ScriptDir "\lib\updatechecker.ahk"
 }
-updateChecker()
 updateLogs() {
     sorter := new FileSorter()
     sortedFiles := sorter.SortFiles(logPath)  ; Now returns the sorted array
@@ -123,7 +149,7 @@ runClicks() { ; adapted from @yefw's program
             y := pos.y + (pos.h/2)
             Sleep, 100
             ;if (read("ADBM")) {
-            ;    ControlClick, x%x% y%y%, ahk_id %handle%,,,, NA
+            ;    ControlClick, x%x% y%y%, ahk_id %handle%, , , , NA
             ;}
             MouseMove, % x+1, % y
             click, %x% %y%
@@ -569,6 +595,8 @@ class FileSorter {
     }
 }
 start() {
+    MsgBox, 48, Discontinued, MultiAcc is discontinued and cannot be started. Please use MultiScope instead.
+    Return ; Prevent function execution
     mainSave()
     if (!started) {
         formatTime, t,, HH:mm:ss
@@ -628,6 +656,7 @@ Return
 accountGUiClose:
     accountSave()
     Gui, account:destroy
+    ; ExitApp ; No longer needed here
 Return
 mainGuiClose:
 	stop()
@@ -674,5 +703,6 @@ start:
 Return
 stop:
     stop()
-F1::Goto, start
-F2::Goto, stop
+; Comment out or remove hotkeys to prevent direct calls
+; F1::Goto, start
+; F2::Goto, stop
